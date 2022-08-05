@@ -7,15 +7,21 @@ import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
 contract AstroFT is ERC721 {
-	// struct to hold NFT data attributes.
-	struct NFTAttributes {
-		string imageURI;
-		string date;
-		string eventName;
-	}
+    // struct to hold NFT data attributes.
+    struct NFTAttributes {
+        string imageURL;
+        string date;
+        string eventName;
+    }
 
-	// Compare NFT attributes for updates.
-	function checkNFTAttributes() public {
+    // Compare NFT attributes for updates.
+    function checkNFTAttributes(uint256) public view {}
 
-	}
+    function SetNFTImage() public view {
+        string memory imageURL;
+    }
+
+    function setNFTName() public view {
+        string memory eventName;
+    }
 }
