@@ -21,7 +21,14 @@ contract AstroFT is ERC721 {
         string memory imageURL;
     }
 
-    function setNFTName() public view {
+    function setNFTEventName() public view {
         string memory eventName;
     }
+
+    // update NFT Image and Text
+    function updateNFT() public view {
+		// Check date current date
+		// If date is jsut a day without an astronomy event. Display/return image of the day from NASA's API. Set name to name of picture.
+		// If date is a day with an astronomy event, display image for event. Set name to name of event.
+	}
 }
