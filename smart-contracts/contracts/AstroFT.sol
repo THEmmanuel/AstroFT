@@ -1,8 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.9;
-
-// Import this file to use console.log
-import "hardhat/console.sol";
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.12;
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -13,23 +10,21 @@ import "@tableland/evm/contracts/ITablelandTables.sol";
 contract AstroFT is ERC721URIStorage, Ownable {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIds;
+    ITablelandTables private _tableland;
 
     string private _baseURIString =
         "https://testnet.tableland.network/query?s=";
-
-    ITablelandTables private _tableland;
     string private _metadataTable;
     uint256 private _metadataTableId;
     string private _tablePrefix = "AstroFT";
-
-    // address public registry = "0x4b48841d4b32C4650E4ABc117A03FE8B51f38F68";
+    // someday we update this with a nuxt app that diplays x,y and
+    // gives you the interface to move x,y.
+    string private _externalURL = "AstroFT.me";
+    string private _image =
+        "https://bafkreifuuoc6etjwyczscqovbscvuvf4jqlf6gqgce5sefihrmssq4q2zq.ipfs.nftstorage.link/";
 
     constructor(address registry) ERC721("AstroFT", "AFT") {
         _tableland = ITablelandTables(registry);
-
-        /*
-         * Stores the unique ID for the newly created table.
-         */
         _metadataTableId = _tableland.createTable(
             address(this),
             string.concat(
@@ -37,14 +32,9 @@ contract AstroFT is ERC721URIStorage, Ownable {
                 _tablePrefix,
                 "_",
                 Strings.toString(block.chainid),
-                " (id int, image text, event_date text, event_description text , external_url text, attributes text);"
+                " (id int, image text, description text);"
             )
         );
-
-        /*
-         * Stores the full tablename for the new table.
-         * {prefix}_{chainid}_{tableid}
-         */
         _metadataTable = string.concat(
             _tablePrefix,
             "_",
@@ -62,9 +52,11 @@ contract AstroFT is ERC721URIStorage, Ownable {
             string.concat(
                 "INSERT INTO ",
                 _metadataTable,
-                " (id int, image text, event_date text, event_description text , external_url text, attributes text) VALUES (",
+                " (id, image , description) VALUES (",
                 Strings.toString(newItemId),
-                ", 'https://bafkreifuuoc6etjwyczscqovbscvuvf4jqlf6gqgce5sefihrmssq4q2zq.ipfs.nftstorage.link', text, text, text, text);"
+                ", '",
+                _image,
+                "', 'nft');"
             )
         );
         _safeMint(to, newItemId, "");
@@ -75,39 +67,38 @@ contract AstroFT is ERC721URIStorage, Ownable {
     function updateNft(
         uint256 tokenId,
         string calldata image,
-        string calldata event_description
+        string calldata description
     ) public {
-        // Check token ownership
+        // check token ownership
         require(this.ownerOf(tokenId) == msg.sender, "Invalid owner");
 
+        // Update the row in tableland
         _tableland.runSQL(
             address(this),
             _metadataTableId,
             string.concat(
                 "UPDATE ",
                 _metadataTable,
-                " SET image = ",
+                " SET image = '",
                 image,
-                " AND event_description = ",
-                event_description,
-                " WHERE id = ",
+                "', description = '",
+                description,
+                " ' WHERE id = ",
                 Strings.toString(tokenId),
                 ";"
             )
         );
     }
 
-    /* Any table updates will go here */
-
-    function metadataURI() public view returns (string memory) {
-        string memory base = _baseURI();
-        return string.concat(base, "SELECT%20*%20FROM%20", _metadataTable);
-    }
-
     function _baseURI() internal view override returns (string memory) {
         return _baseURIString;
     }
 
+    /*
+     * tokenURI is an example of how to turn a row in your table back into
+     * erc721 compliant metadata JSON. here, we do a simple SELECT statement
+     * with function that converts the result into json.
+     */
     function tokenURI(uint256 tokenId)
         public
         view
@@ -117,83 +108,45 @@ contract AstroFT is ERC721URIStorage, Ownable {
     {
         require(
             _exists(tokenId),
-            "ERC721URIStorage: URI query for nonexistent token"
+            "ERC721Metadata: URI query for nonexistent token"
         );
-        string memory base = _baseURI();
+        string memory baseURI = _baseURI();
 
-        string memory json_group = "";
-        string[6] memory cols = [
-            "id",
-            "image",
-            "event_date",
-            "event_description",
-            "external_link",
-            "attributes"
-        ];
-        for (uint256 i; i < cols.length; i++) {
-            if (i > 0) {
-                json_group = string.concat(json_group, ",");
-            }
-            json_group = string.concat(json_group, "'", cols[i], "',", cols[i]);
+        if (bytes(baseURI).length == 0) {
+            return "";
         }
 
-        return
-            string.concat(
-                base,
-                "SELECT%20",
-                json_group,
-                "%20FROM%20",
+        /*
+            A SQL query for a single table row at the `tokenId`
+            
+            SELECT json_object('id',id,'name',name,'description',description,'attributes',attributes)
+            FROM {tableName} 
+            WHERE id=
+         */
+        string memory query = string(
+            abi.encodePacked(
+                "select%20",
+                "json_object%28%27id%27%2Cid%2C%27image%27%2Cimage%2C%27description%27%2Cdescription%2C%27description%27%2Cdescription%29%20",
+                "from%20",
                 _metadataTable,
-                "%20WHERE%20id%3D",
-                Strings.toString(tokenId),
-                "&mode=list"
+                "%20where%20id%20%3D"
+            )
+        );
+        // Return the baseURI with an appended query string, which looks up the token id in a row
+        // `&mode=list` formats into the proper JSON object expected by metadata standards
+        return
+            string(
+                abi.encodePacked(
+                    baseURI,
+                    query,
+                    Strings.toString(tokenId),
+                    "&mode=list"
+                )
             );
     }
 
-    function setExternalURL(string calldata externalURL) external onlyOwner {
-        _tableland.runSQL(
-            address(this),
-            _metadataTableId,
-            string.concat(
-                "update ",
-                _metadataTable,
-                " set external_link = ",
-                externalURL,
-                "||'?tokenId='||id", // Turns every row's URL into a URL including get param for tokenId
-                ";"
-            )
-        );
-    }
-
-    function setattributes(string calldata attributes) external onlyOwner {
-        _tableland.runSQL(
-            address(this),
-            _metadataTableId,
-            string.concat(
-                "update ",
-                _metadataTable,
-                " set attributes = ",
-                attributes,
-                "||'?tokenId='||id", // Turns every row's URL into a URL including get param for tokenId
-                ";"
-            )
-        );
-    }
-
-    function _addressToString(address x) internal pure returns (string memory) {
-        bytes memory s = new bytes(40);
-        for (uint256 i = 0; i < 20; i++) {
-            bytes1 b = bytes1(uint8(uint256(uint160(x)) / (2**(8 * (19 - i)))));
-            bytes1 hi = bytes1(uint8(b) / 16);
-            bytes1 lo = bytes1(uint8(b) - 16 * uint8(hi));
-            s[2 * i] = char(hi);
-            s[2 * i + 1] = char(lo);
-        }
-        return string(s);
-    }
-
-    function char(bytes1 b) internal pure returns (bytes1 c) {
-        if (uint8(b) < 10) return bytes1(uint8(b) + 0x30);
-        else return bytes1(uint8(b) + 0x57);
+    function metadataURI() public view returns (string memory) {
+        string memory base = _baseURI();
+        return string.concat(base, "SELECT%20*%20FROM%20", _metadataTable);
     }
 }
