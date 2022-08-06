@@ -35,6 +35,7 @@ contract AstroFT is ERC721URIStorage, Ownable {
             string.concat(
                 "CREATE TABLE ",
                 _tablePrefix,
+                "_",
                 Strings.toString(block.chainid),
                 " (id int, image text, event_date text, event_description text , external_url text, attributes text);"
             )

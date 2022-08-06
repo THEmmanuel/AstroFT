@@ -1,2 +1,2 @@
 
-    export const astroFT = "0x532C88424404a10A41A1a3bbD6016Aa0b27c909D"
+    export const astroFT = "0xa830B654972c4440c767B9A4A1A97D570Cd5f612"
