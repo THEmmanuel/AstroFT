@@ -1,0 +1,15 @@
+.container {
+    width: 30rem;
+    margin: 100px auto;
+  }
+  
+  .button {
+    width: 100%;
+    margin: 0.2rem;
+    padding: 0.8rem;
+    border: none;
+    background-color: purple;
+    color: white;
+    font-size: 16;
+    cursor: pointer;
+  }
