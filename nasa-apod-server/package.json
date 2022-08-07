@@ -1,0 +1,18 @@
+{
+	"name": "nasa-apod-server",
+	"version": "1.0.0",
+	"description": "Simple server that returns NASA APOD",
+	"main": "index.js",
+	"type": "module",
+	"scripts": {
+		"start": "node index.js",
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"author": "Emmanuel Ayodele Bello",
+	"license": "ISC",
+	"dependencies": {
+		"axios": "^0.27.2",
+		"dotenv": "^16.0.1",
+		"express": "^4.18.1"
+	}
+}
